@@ -32,8 +32,19 @@ final class Notifier {
     }
 
     static void show(Context ctx, String id, String title, String text) {
+        try {
+            post(ctx, id, title, text);
+        } catch (RuntimeException e) {
+            Logs.e("AuroraNotify", "уведомление не показано", e);
+        }
+    }
+
+    private static void post(Context ctx, String id, String title, String text) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
-        if (nm == null || !nm.areNotificationsEnabled()) return;
+        if (nm == null || !nm.areNotificationsEnabled()) {
+            Logs.w("AuroraNotify", "уведомления выключены в системе: " + title);
+            return;
+        }
         Intent open = new Intent(ctx, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(
@@ -49,5 +60,6 @@ final class Notifier {
                 .setShowWhen(true)
                 .build();
         nm.notify(id == null ? 0 : id.hashCode(), n);
+        Logs.i("AuroraNotify", "уведомление: " + title);
     }
 }

@@ -3,6 +3,8 @@
 
     <!-- Загрузка данных NOAA, NASA и Open-Meteo -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 14+: без него нельзя поставить фоновую проверку с условием «есть интернет» (выдаётся автоматически) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Уведомления о вспышках и сиянии: единственное разрешение, которое спрашивается у пользователя -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Чтобы фоновая проверка продолжалась после перезагрузки телефона (выдаётся автоматически) -->
@@ -27,7 +29,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Долгое нажатие на значок приложения → «Журнал работы» -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity
+            android:name=".LogActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
+            android:exported="true"
+            android:label="@string/logs_title" />
+
+        <provider
+            android:name=".LogFileProvider"
+            android:authorities="ru.murmansk.aurora.logs"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <service
             android:name=".RefreshJob"

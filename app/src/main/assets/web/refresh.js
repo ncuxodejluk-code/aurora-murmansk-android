@@ -79,6 +79,11 @@ async function doRefresh(reason) {
 
     const state = computeState({ now, settings, extracts });
     state.settingsKey = settingsKey(settings);
+    const failed = todo.filter((s, i) => results[i].status !== 'fulfilled');
+    console.info(
+      `обновление (${reason}): загружено ${todo.length - failed.length} из ${todo.length}` +
+        (failed.length ? `; ошибки: ${failed.map((s) => `${s.key} — ${sources[s.key].error}`).join(', ')}` : ''),
+    );
     await chrome.storage.local.set({ extracts, state, sources, lastRefresh: now });
     updateWidget(state);
     await notifyAll(state, settings, stored.seen);

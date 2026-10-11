@@ -1,7 +1,6 @@
 package ru.murmansk.aurora;
 
 import android.content.Context;
-import android.util.Log;
 
 import org.json.JSONArray;
 
@@ -32,7 +31,7 @@ final class Store {
     static synchronized void init(Context ctx) {
         if (dir != null) return;
         dir = new File(ctx.getApplicationContext().getFilesDir(), "store");
-        if (!dir.exists() && !dir.mkdirs()) Log.w(TAG, "не удалось создать " + dir);
+        if (!dir.exists() && !dir.mkdirs()) Logs.w(TAG, "не удалось создать " + dir);
     }
 
     static synchronized String get(String key) {
@@ -52,13 +51,13 @@ final class Store {
             out.write(json.getBytes(StandardCharsets.UTF_8));
             out.getFD().sync();
         } catch (IOException e) {
-            Log.w(TAG, "запись " + key, e);
+            Logs.e(TAG, "запись " + key, e);
             return;
         }
         File target = file(key);
         if (!tmp.renameTo(target)) {
-            if (target.exists() && !target.delete()) Log.w(TAG, "не удалось заменить " + key);
-            if (!tmp.renameTo(target)) Log.w(TAG, "не удалось сохранить " + key);
+            if (target.exists() && !target.delete()) Logs.w(TAG, "не удалось заменить " + key);
+            if (!tmp.renameTo(target)) Logs.w(TAG, "не удалось сохранить " + key);
         }
     }
 
@@ -66,7 +65,7 @@ final class Store {
         if (!valid(key)) return;
         cache.put(key, null);
         File f = file(key);
-        if (f.exists() && !f.delete()) Log.w(TAG, "не удалось удалить " + key);
+        if (f.exists() && !f.delete()) Logs.w(TAG, "не удалось удалить " + key);
     }
 
     static synchronized String keysJson() {
@@ -97,7 +96,7 @@ final class Store {
             while ((n = in.read(chunk)) > 0) buf.write(chunk, 0, n);
             return new String(buf.toByteArray(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            Log.w(TAG, "чтение " + f, e);
+            Logs.e(TAG, "чтение " + f, e);
             return null;
         }
     }

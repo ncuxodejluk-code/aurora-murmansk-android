@@ -207,6 +207,13 @@ input[aria-invalid='true'] {
   filter: brightness(1.08);
 }
 
+.btn-secondary {
+  margin-top: 4px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--frost);
+}
+
 .saved {
   color: var(--haze);
   font-size: 13.5px;

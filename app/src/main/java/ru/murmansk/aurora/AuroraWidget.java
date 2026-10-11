@@ -26,6 +26,14 @@ public class AuroraWidget extends AppWidgetProvider {
     }
 
     private static void render(Context ctx, AppWidgetManager mgr, int[] ids) {
+        try {
+            draw(ctx, mgr, ids);
+        } catch (RuntimeException e) {
+            Logs.e("AuroraWidget", "виджет не обновился", e);
+        }
+    }
+
+    private static void draw(Context ctx, AppWidgetManager mgr, int[] ids) {
         Store.init(ctx);
         String place = ctx.getString(R.string.widget_place_default);
         String kp = "—";

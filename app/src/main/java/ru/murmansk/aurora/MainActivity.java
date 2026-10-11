@@ -2,6 +2,7 @@ package ru.murmansk.aurora;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -23,12 +24,24 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Logs.init(this);
         Store.init(this);
+        // После сбоя сначала показываем журнал, чтобы его можно было отправить.
+        if (Logs.hasNewCrash()) {
+            openLogs(true);
+            return;
+        }
         drawBehindSystemBars();
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(WebHost.BACKGROUND);
-        web = new WebView(this);
+        try {
+            web = new WebView(this);
+        } catch (RuntimeException e) {
+            Logs.e("AuroraMain", "не удалось создать WebView", e);
+            openLogs(true);
+            return;
+        }
         root.addView(web, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(root);
@@ -42,6 +55,7 @@ public class MainActivity extends Activity {
         });
         WebHub.register(web);
         web.loadUrl(WebHost.BASE + "index.html");
+        Logs.i("AuroraMain", "экран открыт");
 
         askForNotificationsOnce();
     }
@@ -84,6 +98,11 @@ public class MainActivity extends Activity {
         if (code == REQ_NOTIFICATIONS && web != null) {
             web.evaluateJavascript("window.__auroraResume&&window.__auroraResume()", null);
         }
+    }
+
+    private void openLogs(boolean afterCrash) {
+        startActivity(new Intent(this, LogActivity.class).putExtra(LogActivity.EXTRA_AFTER_CRASH, afterCrash));
+        finish();
     }
 
     /** Единственное разрешение приложения — уведомления; спрашиваем один раз при первом запуске. */

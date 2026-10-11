@@ -5,7 +5,6 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
@@ -48,8 +47,13 @@ final class WebHost {
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest req) {
                 Uri u = req.getUrl();
                 if (!HOST.equals(u.getHost())) return null;
-                if ("/net".equals(u.getPath())) return Net.proxy(u.getQueryParameter("u"));
-                return Assets.serve(app, u.getPath());
+                try {
+                    if ("/net".equals(u.getPath())) return Net.proxy(u.getQueryParameter("u"));
+                    return Assets.serve(app, u.getPath());
+                } catch (RuntimeException e) {
+                    Logs.e(TAG, "запрос " + u.getPath(), e);
+                    return Assets.notFound();
+                }
             }
 
             @Override
@@ -61,7 +65,7 @@ final class WebHost {
                     try {
                         app.startActivity(new Intent(Intent.ACTION_VIEW, u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     } catch (ActivityNotFoundException e) {
-                        Log.w(TAG, "нет браузера для " + u, e);
+                        Logs.w(TAG, "нет браузера для " + u);
                     }
                 }
                 return true;
@@ -69,7 +73,7 @@ final class WebHost {
 
             @Override
             public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
-                Log.w(TAG, "процесс WebView завершился");
+                Logs.w(TAG, "процесс WebView завершился" + (detail.didCrash() ? " со сбоем" : " (нехватка памяти)"));
                 if (onCrash != null) onCrash.run();
                 return true;
             }
@@ -78,7 +82,11 @@ final class WebHost {
         view.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage m) {
-                Log.d(TAG, m.message() + " (" + m.sourceId() + ":" + m.lineNumber() + ")");
+                String src = m.sourceId() == null ? "" : m.sourceId().replace(BASE, "");
+                String text = "JS " + m.message() + " (" + src + ":" + m.lineNumber() + ")";
+                if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) Logs.e(TAG, text, null);
+                else if (m.messageLevel() == ConsoleMessage.MessageLevel.WARNING) Logs.w(TAG, text);
+                else Logs.i(TAG, text);
                 return true;
             }
         });

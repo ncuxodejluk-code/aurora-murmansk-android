@@ -760,6 +760,19 @@ main {
   color: var(--frost);
 }
 
+.link-btn {
+  margin-top: 10px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--haze);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(154, 166, 200, 0.4);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -8,4 +8,7 @@
     <string name="widget_place_kp">%1$s, Kp %2$s</string>
     <string name="widget_empty_time">нет данных</string>
     <string name="widget_empty_line">откройте приложение</string>
+    <string name="logs_title">Журнал работы</string>
+    <string name="shortcut_logs">Журнал</string>
+    <string name="shortcut_logs_long">Журнал работы</string>
 </resources>

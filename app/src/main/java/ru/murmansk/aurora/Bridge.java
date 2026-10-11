@@ -7,7 +7,6 @@ import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
@@ -77,7 +76,7 @@ public final class Bridge {
                 try {
                     app.startActivity(i);
                 } catch (ActivityNotFoundException e) {
-                    Log.w(TAG, "нет экрана настроек уведомлений", e);
+                    Logs.w(TAG, "нет экрана настроек уведомлений");
                 }
             }
         });
@@ -87,6 +86,21 @@ public final class Bridge {
     public void updateWidget(String json) {
         Store.set("widget", json);
         AuroraWidget.updateAll(app);
+    }
+
+    @JavascriptInterface
+    public void log(String message) {
+        Logs.i("AuroraJS", message);
+    }
+
+    @JavascriptInterface
+    public void openLogs() {
+        main.post(new Runnable() {
+            @Override
+            public void run() {
+                app.startActivity(new Intent(app, LogActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            }
+        });
     }
 
     @JavascriptInterface

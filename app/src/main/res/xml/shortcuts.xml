@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_logs"
+        android:shortcutId="logs"
+        android:shortcutLongLabel="@string/shortcut_logs_long"
+        android:shortcutShortLabel="@string/shortcut_logs">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="ru.murmansk.aurora.LogActivity"
+            android:targetPackage="ru.murmansk.aurora" />
+    </shortcut>
+</shortcuts>

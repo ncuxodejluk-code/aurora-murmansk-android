@@ -704,6 +704,7 @@ function renderFooter(st) {
       { class: 'footer-note' },
       `В фоне приложение проверяет данные ${intervalText(withDefaults(current.settings).intervalMin)} и загружает только лёгкие файлы. Солнечный ветер и овал сияния обновляются, когда приложение открыто.`,
     ),
+    h('button', { class: 'link-btn', type: 'button', onclick: () => B.openLogs() }, 'Журнал работы'),
   );
 }
 

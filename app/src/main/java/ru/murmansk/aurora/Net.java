@@ -1,7 +1,6 @@
 package ru.murmansk.aurora;
 
 import android.net.Uri;
-import android.util.Log;
 import android.webkit.WebResourceResponse;
 
 import java.io.ByteArrayInputStream;
@@ -44,6 +43,7 @@ final class Net {
             c.setRequestProperty("Accept", "application/json");
             c.setRequestProperty("User-Agent", "AuroraMurmansk/1.0 (Android)");
             int code = c.getResponseCode();
+            if (code != 200) Logs.w(TAG, u.getHost() + u.getPath() + " → " + code);
             InputStream body = code >= 400 ? c.getErrorStream() : c.getInputStream();
             if (body == null) body = new ByteArrayInputStream(new byte[0]);
             if (code < 200 || (code >= 300 && code < 400) || code > 599) code = 502;
@@ -53,7 +53,7 @@ final class Net {
             headers.put("Cache-Control", "no-store");
             return new WebResourceResponse("application/json", "utf-8", code, reason, headers, body);
         } catch (IOException e) {
-            Log.w(TAG, "нет связи: " + u.getHost() + u.getPath() + " — " + e);
+            Logs.w(TAG, "нет связи: " + u.getHost() + u.getPath() + " — " + e);
             if (c != null) c.disconnect();
             return error(502, "Bad Gateway", "network");
         }
