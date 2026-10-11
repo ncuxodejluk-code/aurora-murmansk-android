@@ -23,14 +23,18 @@ jobs:
 
       # Ключ подписи хранится в репозитории зашифрованным, пароль — в секрете репозитория.
       # Один и тот же ключ нужен, чтобы новые версии ставились поверх старых.
+      # Без пароля сборка всё равно проверяется, но не публикуется: отладочную подпись нельзя ставить поверх.
       - name: Ключ подписи
+        id: signing
         env:
           AURORA_SIGNING_PASSWORD: ${{ secrets.AURORA_SIGNING_PASSWORD }}
         run: |
           if [ -z "$AURORA_SIGNING_PASSWORD" ]; then
-            echo "::error title=Нет пароля ключа подписи::Добавьте секрет AURORA_SIGNING_PASSWORD: Settings → Secrets and variables → Actions → New repository secret."
-            exit 1
+            echo "::warning title=Нет пароля ключа подписи::Сборка будет только проверочной. Добавьте секрет AURORA_SIGNING_PASSWORD: Settings → Secrets and variables → Actions → New repository secret."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
             -in app/signing/release.p12.enc -out "$RUNNER_TEMP/release.p12" \
             -pass env:AURORA_SIGNING_PASSWORD
@@ -59,6 +63,7 @@ jobs:
             aurora-murmansk-extension.zip
 
       - name: Публикация в Releases
+        if: steps.signing.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -66,3 +71,9 @@ jobs:
             --title "Сборка ${{ github.run_number }}" \
             --notes "Android: скачайте aurora-murmansk.apk на телефон и откройте его, чтобы установить или обновить приложение. Браузер: aurora-murmansk-extension.zip — расширение для Яндекс Браузера и Chrome, как установить — в README." \
             --latest
+
+      - name: Нет ключа — не опубликовано
+        if: steps.signing.outputs.ready != 'true'
+        run: |
+          echo "::error title=Сборка не опубликована::APK собран без ключа подписи и в Releases не выложен. Добавьте секрет AURORA_SIGNING_PASSWORD и запустите сборку заново."
+          exit 1
