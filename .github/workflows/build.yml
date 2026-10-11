@@ -72,6 +72,16 @@ jobs:
             --notes "Android: скачайте aurora-murmansk.apk на телефон и откройте его, чтобы установить или обновить приложение. Браузер: aurora-murmansk-extension.zip — расширение для Яндекс Браузера и Chrome, как установить — в README." \
             --latest
 
+      # Сборки 1–3 подписаны старым ключом и поверх новых не ставятся — убрать их из Releases.
+      - name: Убрать сборки со старым ключом
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for t in build-1 build-2 build-3; do
+            gh release delete "$t" --yes --cleanup-tag 2>/dev/null && echo "удалена $t" || true
+          done
+
       - name: Нет ключа — не опубликовано
         if: steps.signing.outputs.ready != 'true'
         run: |
