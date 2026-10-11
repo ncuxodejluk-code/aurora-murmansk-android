@@ -1,7 +1,8 @@
 import * as F from './lib/format.js';
 import { HOUR, arrivalSpan } from './lib/model.js';
 import { GROUPS } from './lib/sources.js';
-import { withDefaults } from './lib/settings.js';
+import { withDefaults, saveSettings } from './lib/settings.js';
+import { isMuted, muteOptions, untilFor } from './lib/mute.js';
 import { refresh, settingsKey } from './refresh.js';
 
 const B = window.AuroraBridge;
@@ -48,6 +49,7 @@ const intervalText = (m) => (m >= 180 ? 'раз в 3 часа' : m >= 60 ? 'ра
 async function init() {
   $('settings').addEventListener('click', () => (location.href = 'settings.html'));
   $('refresh').addEventListener('click', () => requestRefresh('manual'));
+  $('mute-select').addEventListener('change', onMuteChange);
 
   Object.assign(current, await chrome.storage.local.get(['state', 'sources', 'busy', 'settings']));
   render();
@@ -130,7 +132,34 @@ function render() {
   renderFooter(st);
 }
 
+// ───── Пауза уведомлений ─────
+
+let muteSig = '';
+
+function renderMute() {
+  const s0 = withDefaults(current.settings);
+  const now = Date.now();
+  const opts = muteOptions(s0, now);
+  const sig = opts.map((o) => o.label).join('|');
+  $('mute').classList.toggle('is-muted', isMuted(s0, now));
+  if (sig === muteSig) return; // не пересобираем список, пока он открыт и ничего не поменялось
+  muteSig = sig;
+  const sel = $('mute-select');
+  sel.replaceChildren(...opts.map((o) => h('option', { value: o.value }, o.label)));
+  sel.value = 'current';
+}
+
+async function onMuteChange(e) {
+  const v = e.target.value;
+  if (v === 'current') return;
+  await saveSettings({ notifyPausedUntil: v === 'on' ? null : untilFor(v) });
+  current.settings = (await chrome.storage.local.get('settings')).settings;
+  muteSig = '';
+  render();
+}
+
 function renderTop() {
+  renderMute();
   const st = current.state;
   $('place').textContent = st?.location?.name || withDefaults(current.settings).location.name;
   const btn = $('refresh');
@@ -150,7 +179,7 @@ function renderTop() {
 function renderNotice() {
   const box = $('notice');
   const s0 = withDefaults(current.settings);
-  const wants = s0.notifyFlares || s0.notifyArrivals || s0.notifyNight || s0.notifyNow;
+  const wants = (s0.notifyFlares || s0.notifyArrivals || s0.notifyNight || s0.notifyNow) && !isMuted(s0);
   let allowed = true;
   try {
     allowed = B.notificationsAllowed();

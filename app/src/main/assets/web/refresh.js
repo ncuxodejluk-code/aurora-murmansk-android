@@ -4,6 +4,7 @@ import { SOURCES, loadSource } from './lib/sources.js';
 import { computeState, flareFlux, HOUR } from './lib/model.js';
 import { loadSettings } from './lib/settings.js';
 import * as F from './lib/format.js';
+import { isMuted } from './lib/mute.js';
 
 const B = window.AuroraBridge;
 const MIN = 60000;
@@ -209,6 +210,8 @@ async function notifyAll(state, settings, seenStored) {
 
   await chrome.storage.local.set({ seen });
   if (firstRun) return; // при первом запуске не засыпаем уведомлениями о старых событиях
+  // Пауза: события отмечены как увиденные, но не показываются — после паузы не будет лавины старых.
+  if (isMuted(settings, now)) return;
   for (const n of out) {
     try {
       B.showNotification(n.id, n.title, n.message);

@@ -7,6 +7,7 @@ export const DEFAULTS = {
   notifyArrivals: true,
   notifyNow: true,
   notifyNight: true,
+  notifyPausedUntil: null, // null — включены, число — выключены до этого времени, 'forever' — совсем
 };
 
 export const INTERVALS = [10, 15, 30, 60, 180];
@@ -15,6 +16,7 @@ export function withDefaults(saved) {
   const s = { ...DEFAULTS, ...(saved || {}) };
   s.location = { ...DEFAULTS.location, ...(saved?.location || {}) };
   if (!INTERVALS.includes(Number(s.intervalMin))) s.intervalMin = DEFAULTS.intervalMin;
+  if (s.notifyPausedUntil !== 'forever' && typeof s.notifyPausedUntil !== 'number') s.notifyPausedUntil = null;
   return s;
 }
 

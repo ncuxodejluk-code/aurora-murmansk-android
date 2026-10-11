@@ -147,6 +147,10 @@ input[aria-invalid='true'] {
   border-color: var(--alert);
 }
 
+.mute-hint {
+  margin: -4px 0 14px;
+}
+
 .check {
   display: flex;
   align-items: center;

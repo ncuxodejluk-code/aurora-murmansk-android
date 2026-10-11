@@ -1,4 +1,5 @@
 import { DEFAULTS, loadSettings, saveSettings } from './lib/settings.js';
+import { muteOptions, muteStatus, untilFor } from './lib/mute.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -68,4 +69,28 @@ try {
   $('version').hidden = true;
 }
 
-loadSettings().then(fill);
+function fillMute(s) {
+  const sel = $('mute-select');
+  sel.replaceChildren(
+    ...muteOptions(s).map((o) => {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      return opt;
+    }),
+  );
+  sel.value = 'current';
+}
+
+$('mute-select').addEventListener('change', async (e) => {
+  const v = e.target.value;
+  if (v === 'current') return;
+  const s = await saveSettings({ notifyPausedUntil: v === 'on' ? null : untilFor(v) });
+  fillMute(s);
+  say(`Уведомления ${muteStatus(s)}.`);
+});
+
+loadSettings().then((s) => {
+  fill(s);
+  fillMute(s);
+});
