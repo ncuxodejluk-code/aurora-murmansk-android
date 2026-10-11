@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Сияние</string>
+    <string name="channel_name">Вспышки и сияние</string>
+    <string name="channel_description">Сильные вспышки, выбросы к Земле и хорошие шансы увидеть сияние</string>
+    <string name="widget_description">Когда смотреть сияние и текущий индекс Kp</string>
+    <string name="widget_place_default">Мурманск</string>
+    <string name="widget_place_kp">%1$s, Kp %2$s</string>
+    <string name="widget_empty_time">нет данных</string>
+    <string name="widget_empty_line">откройте приложение</string>
+</resources>

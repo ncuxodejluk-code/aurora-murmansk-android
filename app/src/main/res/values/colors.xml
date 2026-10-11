@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="night">#FF161B3D</color>
+    <color name="night_raised">#FF1E2550</color>
+    <color name="line">#FF2E3770</color>
+    <color name="frost">#FFE8EEF7</color>
+    <color name="haze">#FF9AA6C8</color>
+    <color name="dim">#FF8A94B8</color>
+    <color name="aurora">#FF5BE3A3</color>
+</resources>

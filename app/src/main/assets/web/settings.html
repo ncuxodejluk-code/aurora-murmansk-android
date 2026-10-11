@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Настройки</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="settings.css">
+  <script src="shim.js"></script>
+</head>
+<body>
+  <main class="page">
+    <button id="back" class="back" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      К прогнозу
+    </button>
+    <h1>Настройки</h1>
+    <p class="lead">Сияние над Мурманском: вспышки на Солнце, выбросы к Земле и время наблюдения.</p>
+
+    <form id="form" novalidate>
+      <fieldset>
+        <legend>Место наблюдения</legend>
+        <div class="row three">
+          <label>Название
+            <input id="name" type="text" maxlength="40" autocomplete="off">
+          </label>
+          <label>Широта, °
+            <input id="lat" type="number" step="0.0001" min="40" max="90" inputmode="decimal">
+          </label>
+          <label>Долгота, °
+            <input id="lon" type="number" step="0.0001" min="-180" max="180" inputmode="decimal">
+          </label>
+        </div>
+        <p class="hint">Расчёт шансов настроен на Кольский полуостров. Для мест южнее 65° с. ш. оценка грубая. <button id="reset-place" class="link" type="button">Вернуть Мурманск</button></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Проверка данных</legend>
+        <label>Проверять каждые
+          <select id="interval">
+            <option value="15">15 минут</option>
+            <option value="30">30 минут</option>
+            <option value="60">час</option>
+            <option value="180">3 часа</option>
+          </select>
+        </label>
+        <label class="check"><input id="clouds" type="checkbox"> Учитывать прогноз облачности (Open-Meteo)</label>
+        <p class="hint">В фоне загружаются только лёгкие данные — около 10 МБ в сутки при проверке раз в 15 минут. Солнечный ветер и овал сияния (несколько мегабайт) загружаются, когда приложение открыто. Android может откладывать фоновые проверки, чтобы беречь батарею.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Вспышки</legend>
+        <label>Показывать и сообщать о вспышках начиная с класса
+          <select id="flare-class">
+            <option value="C5">C5 — заметные</option>
+            <option value="M1">M1 — средние и сильные</option>
+            <option value="M5">M5 — сильные</option>
+            <option value="X1">X1 — только мощнейшие</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Уведомления</legend>
+        <label class="check"><input id="n-flares" type="checkbox"> О новой вспышке выбранного класса</label>
+        <label class="check"><input id="n-arrivals" type="checkbox"> Когда модель NASA показывает выброс к Земле</label>
+        <label class="check"><input id="n-night" type="checkbox"> Днём, если ночью хорошие шансы</label>
+        <label class="check"><input id="n-now" type="checkbox"> Когда сияние вероятно прямо сейчас</label>
+      </fieldset>
+
+      <div class="actions">
+        <button class="btn" type="submit">Сохранить</button>
+        <span id="saved" class="saved" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+
+    <section class="about">
+      <h2>Как считается прогноз</h2>
+      <p>Вспышки берутся с рентгеновских датчиков спутников GOES (NOAA). Сама вспышка сияния не вызывает: его даёт выброс плазмы, если он направлен к Земле. Направление и время прилёта выброса считает модель WSA-ENLIL центра CCMC (NASA, каталог DONKI); если модель ещё не запускали, расширение оценивает прилёт по скорости выброса.</p>
+      <p>Шанс на каждый час складывается из прогноза индекса Kp (NOAA), темноты неба в выбранном месте, близости к магнитной полуночи (около 23:45 по Москве) и облачности. Текущая обстановка — по данным солнечного ветра в точке L1 (Bz, скорость) и модели овала OVATION.</p>
+      <p>Приложению нужно только одно разрешение — на уведомления. Его можно включить или выключить в настройках Android.</p>
+      <p id="version" class="hint"></p>
+    </section>
+  </main>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

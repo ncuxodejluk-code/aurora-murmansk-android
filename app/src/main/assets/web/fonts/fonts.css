@@ -1,0 +1,35 @@
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('Inter-Regular.woff') format('woff');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('Inter-Medium.woff') format('woff');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('Inter-SemiBold.woff') format('woff');
+}
+@font-face {
+  font-family: 'Inter Display';
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+  src: url('InterDisplay-ExtraLight.woff') format('woff');
+}
+@font-face {
+  font-family: 'Inter Display';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('InterDisplay-Medium.woff') format('woff');
+}

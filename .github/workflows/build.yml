@@ -1,0 +1,44 @@
+name: Сборка APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Сборка
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Готовый файл
+        run: cp app/build/outputs/apk/release/*.apk aurora-murmansk.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aurora-murmansk-apk
+          path: aurora-murmansk.apk
+
+      - name: Публикация в Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" aurora-murmansk.apk \
+            --title "Сборка ${{ github.run_number }}" \
+            --notes "Скачайте aurora-murmansk.apk на телефон и откройте его, чтобы установить или обновить приложение." \
+            --latest
