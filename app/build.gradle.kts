@@ -18,22 +18,27 @@ android {
     }
 
     // Один и тот же ключ для всех сборок, иначе обновление не установится поверх.
+    // Ключ лежит в репозитории только в зашифрованном виде (app/signing/release.p12.enc),
+    // а пароль — в секрете GitHub AURORA_SIGNING_PASSWORD. Сборка в GitHub Actions расшифровывает
+    // ключ и передаёт путь и пароль через переменные окружения.
+    // Без них (например, сборка у себя) APK подписывается обычным отладочным ключом.
+    val releaseKeystore = System.getenv("AURORA_KEYSTORE")
+    val signingPassword = System.getenv("AURORA_SIGNING_PASSWORD")
     signingConfigs {
-        create("aurora") {
-            storeFile = file("aurora.jks")
-            storePassword = "auroramurmansk"
-            keyAlias = "aurora"
-            keyPassword = "auroramurmansk"
+        if (releaseKeystore != null && signingPassword != null) {
+            create("aurora") {
+                storeFile = file(releaseKeystore)
+                storePassword = signingPassword
+                keyAlias = "aurora"
+                keyPassword = signingPassword
+            }
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("aurora")
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("aurora")
+            signingConfig = signingConfigs.findByName("aurora") ?: signingConfigs.getByName("debug")
         }
     }
 

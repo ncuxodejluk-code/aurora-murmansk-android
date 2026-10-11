@@ -16,14 +16,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Загружает данные NOAA, NASA и Open-Meteo по просьбе страницы.
+ * Загружает данные NOAA, NASA, Open-Meteo и MET Norway по просьбе страницы.
  * Запросы идут из приложения, поэтому браузерные ограничения CORS не мешают.
- * Разрешены только три сайта-источника.
+ * Разрешены только сайты-источники.
  */
 final class Net {
     private static final String TAG = "AuroraNet";
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(
-            "services.swpc.noaa.gov", "ccmc.gsfc.nasa.gov", "api.open-meteo.com"));
+            "services.swpc.noaa.gov", "ccmc.gsfc.nasa.gov", "api.open-meteo.com", "api.met.no"));
+    // MET Norway просит указывать в запросах приложение и контакт.
+    private static final String USER_AGENT =
+            "AuroraMurmansk/1.0 Android (+https://github.com/ncuxodejluk-code/aurora-murmansk-android)";
 
     private Net() {
     }
@@ -41,7 +44,7 @@ final class Net {
             c.setReadTimeout(22000);
             c.setUseCaches(false);
             c.setRequestProperty("Accept", "application/json");
-            c.setRequestProperty("User-Agent", "AuroraMurmansk/1.0 (Android)");
+            c.setRequestProperty("User-Agent", USER_AGENT);
             int code = c.getResponseCode();
             if (code != 200) Logs.w(TAG, u.getHost() + u.getPath() + " → " + code);
             InputStream body = code >= 400 ? c.getErrorStream() : c.getInputStream();
@@ -53,10 +56,21 @@ final class Net {
             headers.put("Cache-Control", "no-store");
             return new WebResourceResponse("application/json", "utf-8", code, reason, headers, body);
         } catch (IOException e) {
-            Logs.w(TAG, "нет связи: " + u.getHost() + u.getPath() + " — " + e);
+            Logs.w(TAG, "нет связи: " + u.getHost() + u.getPath() + " — " + describe(e));
             if (c != null) c.disconnect();
             return error(502, "Bad Gateway", "network");
         }
+    }
+
+    /** Понятное описание сетевой ошибки для журнала: по нему видно, блокируют ли сайт. */
+    private static String describe(IOException e) {
+        String kind;
+        if (e instanceof java.net.UnknownHostException) kind = "адрес сайта не найден (DNS)";
+        else if (e instanceof java.net.SocketTimeoutException) kind = "сервер не ответил вовремя";
+        else if (e instanceof java.net.ConnectException) kind = "соединение отклонено";
+        else if (e instanceof javax.net.ssl.SSLException) kind = "сбой защищённого соединения";
+        else kind = "сетевая ошибка";
+        return kind + " (" + e + ")";
     }
 
     private static WebResourceResponse error(int code, String reason, String mark) {

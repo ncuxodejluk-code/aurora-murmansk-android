@@ -1,7 +1,7 @@
 // Обновление данных — общее для экрана приложения и фоновой проверки.
 
-import { SOURCES, loadSource } from './lib/sources.js';
-import { computeState, flareFlux, HOUR } from './lib/model.js';
+import { SOURCES, loadSource, groupOf } from './lib/sources.js';
+import { computeState, flareFlux, levelOf, HOUR } from './lib/model.js';
 import { loadSettings } from './lib/settings.js';
 import * as F from './lib/format.js';
 import { isMuted } from './lib/mute.js';
@@ -17,18 +17,60 @@ const SLOW = { donkiFlr: 55, cmes: 55, clouds: 55 };
 const QUICK = 4;
 
 let running = null;
+let queued = null;
 
 export const settingsKey = (s) =>
   [s.location.lat.toFixed(3), s.location.lon.toFixed(3), s.useClouds, s.flareMinClass].join('|');
+
+const locKeyOf = (s) => `${s.location.lat.toFixed(3)},${s.location.lon.toFixed(3)}`;
 
 /**
  * reason: 'manual' и 'settings' — загрузить всё;
  * 'open' — экран открыт: свежие «живые» данные плюс то, что устарело;
  * 'alarm' — фоновая проверка: только лёгкие источники.
+ * again: настройки поменялись — если обновление уже идёт (со старым местом), запустить ещё одно после него.
  */
-export function refresh(reason = 'manual') {
-  if (!running) running = doRefresh(reason).finally(() => (running = null));
-  return running;
+export function refresh(reason = 'manual', { again = false } = {}) {
+  if (!running) {
+    running = doRefresh(reason).finally(() => (running = null));
+    return running;
+  }
+  if (!again) return running;
+  if (!queued) {
+    queued = running
+      .catch(() => null)
+      .then(() => {
+        queued = null;
+        return refresh(reason);
+      });
+  }
+  return queued;
+}
+
+export const isRunning = () => !!running;
+
+/** Данные, которые годятся для этих настроек: облачность и овал — только для того же места. */
+function usableExtracts(extracts, settings) {
+  const key = locKeyOf(settings);
+  const out = {};
+  for (const s of SOURCES) {
+    const e = extracts?.[s.key];
+    if (!e || (s.enabled && !s.enabled(settings)) || (s.perLocation && e.loc !== key)) continue;
+    out[s.key] = e;
+  }
+  return out;
+}
+
+/** Мгновенный пересчёт без сети — после смены места или названия. Недостающее догрузит обновление. */
+export async function recompute() {
+  const settings = await loadSettings();
+  const { extracts } = await chrome.storage.local.get('extracts');
+  if (!extracts) return null;
+  const state = computeState({ now: Date.now(), settings, extracts: usableExtracts(extracts, settings) });
+  state.settingsKey = settingsKey(settings);
+  await chrome.storage.local.set({ state });
+  updateWidget(state);
+  return state;
 }
 
 function due(src, reason, ex, now) {
@@ -50,12 +92,16 @@ async function doRefresh(reason) {
   const prevSources = stored.sources || {};
   await chrome.storage.local.set({ busy: { since: now, reason } });
   try {
-    const locKey = `${settings.location.lat.toFixed(3)},${settings.location.lon.toFixed(3)}`;
+    const locKey = locKeyOf(settings);
     const active = SOURCES.filter((s) => !s.enabled || s.enabled(settings));
-    const todo = active.filter(
-      (s) => (s.perLocation && extracts[s.key] && extracts[s.key].loc !== locKey) || due(s, reason, extracts[s.key], now),
-    );
-    const results = await Promise.allSettled(todo.map((s) => loadSource(s, now, settings)));
+    const todo = active.filter((s) => {
+      const ex = extracts[s.key];
+      // Данные для другого места — загрузить заново (тяжёлый овал в фоне не качаем и тогда).
+      const moved = s.perLocation && ex && ex.loc !== locKey;
+      if (moved && !(LIVE.has(s.key) && reason === 'alarm')) return true;
+      return due(s, reason, ex, now);
+    });
+    const results = await Promise.allSettled(todo.map((s) => loadSource(s, now, settings, extracts[s.key])));
 
     const sources = {};
     for (const s of active) if (!todo.includes(s) && prevSources[s.key]) sources[s.key] = prevSources[s.key];
@@ -64,7 +110,7 @@ async function doRefresh(reason) {
       const base = { group: s.group, label: s.label, at: now };
       if (r.status === 'fulfilled') {
         extracts[s.key] = { data: r.value, at: now, loc: s.perLocation ? locKey : null };
-        sources[s.key] = { ...base, ok: true };
+        sources[s.key] = { ...base, group: groupOf(s, r.value), ok: true };
       } else {
         if (s.perLocation && extracts[s.key]?.loc !== locKey) delete extracts[s.key];
         sources[s.key] = {
@@ -77,7 +123,15 @@ async function doRefresh(reason) {
     });
     for (const s of SOURCES) if (s.enabled && !s.enabled(settings)) delete extracts[s.key];
 
-    const state = computeState({ now, settings, extracts });
+    // Пока шла загрузка, выбрали другое место: данные сохраняем, а пересчёт сделает следующее обновление.
+    const latest = await loadSettings();
+    if (locKeyOf(latest) !== locKey) {
+      await chrome.storage.local.set({ extracts });
+      console.info(`обновление (${reason}): место сменилось во время загрузки, пересчёт — следующим обновлением`);
+      return null;
+    }
+
+    const state = computeState({ now, settings, extracts: usableExtracts(extracts, settings) });
     state.settingsKey = settingsKey(settings);
     const failed = todo.filter((s, i) => results[i].status !== 'fulfilled');
     console.info(
@@ -103,33 +157,90 @@ export function widgetSummary(state) {
   const night = state.headline.night;
   const kp = Number.isFinite(n.kp) ? F.num(n.kp) : '—';
   let time;
-  let line;
+  let when;
+  let whenShort = null;
   let level = n.level;
+  let chance = null;
 
   if (!state.dataOk) {
     time = 'нет прогноза';
-    line = 'не удалось загрузить данные NOAA';
+    when = 'не удалось загрузить данные NOAA';
   } else if (state.headline.kind === 'bright' || !night) {
     time = 'белые ночи';
-    line = 'слишком светло для сияния';
+    when = 'слишком светло для сияния';
   } else if (state.headline.kind === 'now') {
     const end = night.best && night.best.end > now ? night.best.end : night.end;
     time = `до ${F.time(r5(end))}`;
-    line = `сейчас, шанс ${n.level.label}`;
+    when = 'сейчас';
+    chance = n.chance;
   } else {
     level = night.level;
     const w = night.best || { start: night.viewFrom, end: night.end };
     time = F.range5(w.start, w.end);
-    line = `${F.nightLabel(night.start, night.end, now)}, шанс ${night.level.label}`;
+    when = F.nightLabel(night.start, night.end, now);
+    whenShort = when === 'этой ночью' ? when : `в ночь на ${F.dayShort(night.end)}`;
+    chance = night.maxScore;
   }
+
+  const info = [];
+  if (night) {
+    if (Number.isFinite(night.cloudMean)) info.push(`облака около ${Math.round(night.cloudMean / 10) * 10}%`);
+    info.push(`темно ${F.range5(night.start, night.end)}`);
+  }
+  const a = state.headline.arrival;
+  const note = a
+    ? `${a.kind === 'glancing' ? 'Выброс заденет Землю краем' : 'К Земле идёт выброс'}: прилёт около ${F.dayTime(roundTo(a.arrival, 15))} (±${a.errH} ч)`
+    : '';
+
   return {
     place: state.location.name,
     kp,
     time,
-    line,
+    when,
+    whenShort: whenShort || when,
+    // для виджетов старых версий
+    line: chance != null ? `${when}, шанс ${level.label}` : when,
+    chanceLabel: chance != null ? `шанс ${level.label}` : '',
+    chance: chance != null ? F.percent(chance) : '',
     levelKey: level.key,
+    info: info.join(' · '),
+    note,
     updated: `обновлено в ${F.time(now)}`,
+    bars: widgetBars(state),
   };
+}
+
+/**
+ * Шанс по часам для графика в виджете: ближайшая тёмная часть суток (с часом до и после),
+ * чтобы не тратить место на светлое время. Не больше суток.
+ */
+function widgetBars(state) {
+  const tl = state.timeline || [];
+  const now = state.computedAt;
+  let ic = tl.findIndex((h) => h.t <= now && now < h.t + HOUR);
+  if (ic < 0) ic = tl.findIndex((h) => h.t > now);
+  if (ic < 0) return [];
+  const isDark = (h) => h && h.dark >= 0.3;
+  let start = ic;
+  if (!isDark(tl[ic])) {
+    const d = tl.findIndex((h, i) => i > ic && isDark(h));
+    if (d < 0 || d - ic > 20) return []; // белые ночи или до темноты почти сутки
+    start = Math.max(ic, d - 1);
+  }
+  let end = start;
+  while (end + 1 < tl.length && end - start < 23) {
+    if (isDark(tl[end]) && !isDark(tl[end + 1])) break; // темнота кончилась
+    end++;
+  }
+  end = Math.min(tl.length - 1, end + 1); // час рассвета
+  while (end - start + 1 < 8 && end + 1 < tl.length) end++;
+  return tl.slice(start, end + 1).map((h, i) => ({
+    s: Math.round(Math.max(0, Math.min(1, h.score)) * 100) / 100,
+    d: Math.round(Math.max(0, Math.min(1, h.dark)) * 100) / 100,
+    k: levelOf(h.score).key,
+    h: F.localParts(h.t).hour,
+    ...(i === 0 && start === ic ? { now: 1 } : {}),
+  }));
 }
 
 function updateWidget(state) {

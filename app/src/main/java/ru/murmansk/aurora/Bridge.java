@@ -1,6 +1,8 @@
 package ru.murmansk.aurora;
 
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -86,6 +88,22 @@ public final class Bridge {
     public void updateWidget(String json) {
         Store.set("widget", json);
         AuroraWidget.updateAll(app);
+    }
+
+    /** Текст из буфера обмена — для кнопки «Вставить» у поля координат. */
+    @JavascriptInterface
+    public String clipboardText() {
+        try {
+            ClipboardManager cm = (ClipboardManager) app.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm == null || !cm.hasPrimaryClip()) return "";
+            ClipData clip = cm.getPrimaryClip();
+            if (clip == null || clip.getItemCount() == 0) return "";
+            CharSequence text = clip.getItemAt(0).coerceToText(app);
+            return text == null ? "" : text.toString();
+        } catch (RuntimeException e) {
+            Logs.w(TAG, "буфер обмена: " + e);
+            return "";
+        }
     }
 
     @JavascriptInterface

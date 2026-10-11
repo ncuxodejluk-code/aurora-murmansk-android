@@ -7,6 +7,9 @@ import { parseTime, flareFlux } from './model.js';
 const NOAA = 'https://services.swpc.noaa.gov';
 const DONKI = 'https://ccmc.gsfc.nasa.gov/DONKI-API/get';
 const METEO = 'https://api.open-meteo.com/v1/forecast';
+// Запасной источник облачности — Норвежский метеоинститут (на нём работает yr.no).
+const METNO = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+const HOUR = 3600000;
 
 const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -16,6 +19,7 @@ export const GROUPS = {
   noaa: { name: 'NOAA SWPC', url: 'https://www.swpc.noaa.gov/' },
   nasa: { name: 'NASA DONKI', url: 'https://ccmc.gsfc.nasa.gov/DONKI/' },
   meteo: { name: 'Open-Meteo', url: 'https://open-meteo.com/' },
+  metno: { name: 'MET Norway', url: 'https://www.met.no/' },
 };
 
 // ───────────── Разбор ответов ─────────────
@@ -176,6 +180,66 @@ export function extractClouds(json) {
   };
 }
 
+/** Прогноз MET Norway: почасовой на 2–3 суток, дальше через 6 часов — дополняем до почасового. */
+export function extractMetNo(json) {
+  const ts = json?.properties?.timeseries;
+  if (!Array.isArray(ts)) return null;
+  const pts = ts
+    .map((r) => ({ t: parseTime(r?.time), c: r?.data?.instant?.details?.cloud_area_fraction }))
+    .filter((p) => p.t && finite(p.c))
+    .sort((a, b) => a.t - b.t);
+  const hours = [];
+  pts.forEach((p, i) => {
+    hours.push(p);
+    const next = pts[i + 1];
+    if (!next || next.t - p.t <= HOUR || next.t - p.t > 6 * HOUR) return;
+    for (let t = p.t + HOUR; t < next.t; t += HOUR) {
+      hours.push({ t, c: Math.round(p.c + ((next.c - p.c) * (t - p.t)) / (next.t - p.t)) });
+    }
+  });
+  return { hours };
+}
+
+/**
+ * Облачность: сначала Open-Meteo, если он не отвечает — MET Norway.
+ * Запоминается, какой источник сработал в прошлый раз, и он пробуется первым.
+ */
+async function loadClouds(now, s, prev) {
+  const lat = s.location.lat.toFixed(3);
+  const lon = s.location.lon.toFixed(3);
+  const providers = {
+    meteo: async (timeout) =>
+      extractClouds(
+        await fetchJson(
+          `${METEO}?latitude=${lat}&longitude=${lon}&hourly=cloud_cover&timeformat=unixtime&timezone=GMT&past_days=1&forecast_days=4`,
+          timeout,
+        ),
+      ),
+    metno: async (timeout) => extractMetNo(await fetchJson(`${METNO}?lat=${lat}&lon=${lon}`, timeout)),
+  };
+  const order = prev?.data?.provider === 'metno' ? ['metno', 'meteo'] : ['meteo', 'metno'];
+  const errors = [];
+  for (const [i, key] of order.entries()) {
+    try {
+      // Первый источник ждём недолго, чтобы при блокировке быстрее перейти к запасному.
+      const data = await providers[key](i === 0 ? 15000 : 25000);
+      if (!data?.hours?.length) throw new Error('в ответе нет нужных данных');
+      if (errors.length) {
+        console.info(`облачность: ${errors.map((x) => `${x.name} — ${x.msg}`).join('; ')}; взята у ${GROUPS[key].name}`);
+      }
+      return { ...data, provider: key };
+    } catch (e) {
+      errors.push({ name: GROUPS[key].name, msg: e.message });
+    }
+  }
+  const same = errors.every((x) => x.msg === errors[0].msg);
+  throw new Error(
+    same
+      ? `${errors[0].msg} — ни ${errors.map((x) => x.name).join(', ни ')} не ответили`
+      : errors.map((x) => `${x.name} — ${x.msg}`).join('; '),
+  );
+}
+
 // ───────────── Описание источников ─────────────
 
 export const SOURCES = [
@@ -217,10 +281,7 @@ export const SOURCES = [
     label: 'облачность',
     perLocation: true,
     enabled: (s) => s.useClouds,
-    url: (now, s) =>
-      `${METEO}?latitude=${s.location.lat.toFixed(3)}&longitude=${s.location.lon.toFixed(3)}` +
-      '&hourly=cloud_cover&timeformat=unixtime&timezone=GMT&past_days=1&forecast_days=4',
-    parse: (j) => extractClouds(j),
+    load: loadClouds,
   },
 ];
 
@@ -235,7 +296,7 @@ export async function fetchJson(url, timeoutMs = 25000) {
     if (!text.trim()) return null;
     return JSON.parse(text);
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error('сервер не ответил за 25 с');
+    if (e.name === 'AbortError') throw new Error(`сервер не ответил за ${Math.round(timeoutMs / 1000)} с`);
     if (e instanceof SyntaxError) throw new Error('пришли повреждённые данные');
     if (e instanceof TypeError) throw new Error('нет связи с сервером');
     throw e;
@@ -244,8 +305,12 @@ export async function fetchJson(url, timeoutMs = 25000) {
   }
 }
 
-/** Загружает один источник: возвращает разобранные данные или бросает понятную ошибку. */
-export async function loadSource(src, now, settings) {
+/** Группа для подвала: облачность могла прийти из запасного источника. */
+export const groupOf = (src, data) => (data?.provider && GROUPS[data.provider] ? data.provider : src.group);
+
+/** Загружает один источник: возвращает разобранные данные или бросает понятную ошибку. prev — прошлые данные источника. */
+export async function loadSource(src, now, settings, prev) {
+  if (src.load) return src.load(now, settings, prev);
   const url = src.url(now, settings);
   const json = Array.isArray(url) ? await Promise.all(url.map((u) => fetchJson(u))) : await fetchJson(url);
   const data = src.parse(json, settings);

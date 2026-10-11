@@ -12,7 +12,7 @@
 <body>
   <header class="top">
     <div class="place">
-      <span id="place" class="place-name">Мурманск</span>
+      <select id="place" class="place-select" aria-label="Место наблюдения" autocomplete="off"><option>Мурманск</option></select>
       <span id="updated" class="place-meta"></span>
     </div>
     <div class="top-actions">
@@ -30,7 +30,7 @@
     <svg class="mute-icon mute-on" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a4 4 0 0 0-4 4v2.6L2.8 10.6h10.4L12 8.4V5.8a4 4 0 0 0-4-4Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.4 12.6a1.7 1.7 0 0 0 3.2 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     <svg class="mute-icon mute-off" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a4 4 0 0 0-4 4v2.6L2.8 10.6h10.4L12 8.4V5.8a4 4 0 0 0-4-4Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.4 12.6a1.7 1.7 0 0 0 3.2 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2.2 2.2l11.6 11.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     <label for="mute-select" class="mute-label">Уведомления</label>
-    <select id="mute-select" class="mute-select"></select>
+    <select id="mute-select" class="mute-select" autocomplete="off"></select>
   </div>
 
   <div id="notice" class="notice" role="status" hidden></div>

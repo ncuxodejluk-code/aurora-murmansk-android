@@ -18,23 +18,32 @@
     <h1>Настройки</h1>
     <p class="lead">Сияние над Мурманском: вспышки на Солнце, выбросы к Земле и время наблюдения.</p>
 
-    <form id="form" novalidate>
-      <fieldset>
-        <legend>Место наблюдения</legend>
-        <div class="row three">
-          <label>Название
-            <input id="name" type="text" maxlength="40" autocomplete="off">
-          </label>
-          <label>Широта, °
-            <input id="lat" type="number" step="0.0001" min="40" max="90" inputmode="decimal">
-          </label>
-          <label>Долгота, °
-            <input id="lon" type="number" step="0.0001" min="-180" max="180" inputmode="decimal">
-          </label>
-        </div>
-        <p class="hint">Расчёт шансов настроен на Кольский полуостров. Для мест южнее 65° с. ш. оценка грубая. <button id="reset-place" class="link" type="button">Вернуть Мурманск</button></p>
-      </fieldset>
+    <section id="places" class="places" aria-labelledby="places-title">
+      <h2 id="places-title" class="section-title">Места наблюдения</h2>
+      <p class="hint">По выбранному месту считаются темнота, облачность и шансы. Переключаться между местами можно и на главном экране — нажмите на название места вверху.</p>
+      <ul id="place-list" class="place-list"></ul>
 
+      <div class="add-place">
+        <label for="coords" class="add-label">Добавить место</label>
+        <div class="coords-row">
+          <input id="coords" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Координаты или ссылка с карты">
+          <button id="coords-paste" class="btn btn-secondary btn-small" type="button">Вставить</button>
+        </div>
+        <p id="coords-result" class="coords-result" role="status" aria-live="polite"></p>
+        <div id="name-step" class="name-step" hidden>
+          <label for="place-name">Как назвать это место?</label>
+          <input id="place-name" type="text" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="Например, Териберка">
+          <div class="name-actions">
+            <button id="place-save" class="btn" type="button">Сохранить место</button>
+            <button id="place-cancel" class="link cancel" type="button">Отмена</button>
+          </div>
+        </div>
+        <p class="hint">Скопируйте координаты в Яндекс Картах, Google Картах, 2ГИС или OpenStreetMap и нажмите «Вставить». Подойдут числа (с точкой или запятой — неважно, исправлю сам), градусы и минуты или ссылка на точку.</p>
+      </div>
+      <p id="places-status" class="saved places-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <form id="form" novalidate>
       <fieldset>
         <legend>Проверка данных</legend>
         <label>Проверять каждые
@@ -45,7 +54,7 @@
             <option value="180">3 часа</option>
           </select>
         </label>
-        <label class="check"><input id="clouds" type="checkbox"> Учитывать прогноз облачности (Open-Meteo)</label>
+        <label class="check"><input id="clouds" type="checkbox"> Учитывать прогноз облачности (Open-Meteo, запасной — MET Norway)</label>
         <p class="hint">В фоне загружаются только лёгкие данные — около 10 МБ в сутки при проверке раз в 15 минут. Солнечный ветер и овал сияния (несколько мегабайт) загружаются, когда приложение открыто. Android может откладывать фоновые проверки, чтобы беречь батарею.</p>
       </fieldset>
 
@@ -64,7 +73,7 @@
       <fieldset>
         <legend>Уведомления</legend>
         <label>Сейчас уведомления
-          <select id="mute-select"></select>
+          <select id="mute-select" autocomplete="off"></select>
         </label>
         <p id="mute-hint" class="hint mute-hint">Пауза действует на все уведомления, а прогноз продолжает обновляться. События за время паузы не будут присланы потом.</p>
         <label class="check"><input id="n-flares" type="checkbox"> О новой вспышке выбранного класса</label>
@@ -88,7 +97,7 @@
     <section class="about">
       <h2>Как считается прогноз</h2>
       <p>Вспышки берутся с рентгеновских датчиков спутников GOES (NOAA). Сама вспышка сияния не вызывает: его даёт выброс плазмы, если он направлен к Земле. Направление и время прилёта выброса считает модель WSA-ENLIL центра CCMC (NASA, каталог DONKI); если модель ещё не запускали, расширение оценивает прилёт по скорости выброса.</p>
-      <p>Шанс на каждый час складывается из прогноза индекса Kp (NOAA), темноты неба в выбранном месте, близости к магнитной полуночи (около 23:45 по Москве) и облачности. Текущая обстановка — по данным солнечного ветра в точке L1 (Bz, скорость) и модели овала OVATION.</p>
+      <p>Шанс на каждый час складывается из прогноза индекса Kp (NOAA), темноты неба в выбранном месте, близости к магнитной полуночи (около 23:45 по Москве) и облачности (Open-Meteo, а если он недоступен — MET Norway). Текущая обстановка — по данным солнечного ветра в точке L1 (Bz, скорость) и модели овала OVATION.</p>
       <p>Приложению нужно только одно разрешение — на уведомления. Его можно включить или выключить в настройках Android.</p>
       <p id="version" class="hint"></p>
     </section>

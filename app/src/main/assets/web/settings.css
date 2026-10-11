@@ -105,18 +105,6 @@ label {
   font-size: 13.5px;
 }
 
-.row.three {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 520px) {
-  .row.three {
-    grid-template-columns: 1fr;
-  }
-}
-
 input[type='text'],
 input[type='number'],
 select {
@@ -207,7 +195,7 @@ input[aria-invalid='true'] {
   filter: brightness(1.08);
 }
 
-.btn-secondary {
+.about .btn-secondary {
   margin-top: 4px;
   border: 1px solid var(--line);
   background: transparent;
@@ -240,4 +228,260 @@ input[aria-invalid='true'] {
 
 .about p {
   max-width: 62ch;
+}
+
+/* ───── Места наблюдения ───── */
+
+.places {
+  padding: 20px 0 24px;
+  border-top: 1px solid var(--line);
+}
+
+.section-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.place-list {
+  margin: 14px 0 20px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  list-style: none;
+  overflow: hidden;
+}
+
+.place-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 6px;
+}
+
+.place-item + .place-item {
+  border-top: 1px solid var(--line);
+}
+
+.place-item.is-active {
+  background: rgba(91, 227, 163, 0.06);
+}
+
+.place-pick {
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 9px 8px 9px 14px;
+  border: 0;
+  background: none;
+  color: var(--frost);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.place-radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--haze);
+  border-radius: 50%;
+}
+
+.is-active .place-radio {
+  border-color: var(--aurora);
+  background: var(--aurora);
+  box-shadow: inset 0 0 0 3.5px var(--night);
+}
+
+.place-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.place-title {
+  overflow: hidden;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.place-coords {
+  color: var(--dim);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.place-badge {
+  flex: none;
+  padding: 1px 9px;
+  border: 1px solid rgba(91, 227, 163, 0.4);
+  border-radius: 11px;
+  color: var(--aurora);
+  font-size: 12px;
+}
+
+.place-item .icon-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  color: var(--haze);
+  cursor: pointer;
+}
+
+.place-pick:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.place-item .icon-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--frost);
+}
+
+.place-item .icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.place-item.is-editing {
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.place-item.is-editing input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.add-label {
+  margin: 0 0 6px;
+  color: var(--frost);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.coords-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coords-row input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.btn-small {
+  flex: none;
+  height: 42px;
+  padding: 0 16px;
+}
+
+.coords-row input,
+.name-step input {
+  height: 42px;
+  font-size: 16px;
+}
+
+.name-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.name-actions .btn {
+  height: 42px;
+}
+
+.btn-secondary {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--frost);
+}
+
+.btn-secondary[hidden] {
+  display: none;
+}
+
+.coords-result {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+}
+
+.coords-result:empty {
+  display: none;
+}
+
+.coords-result.is-error {
+  color: var(--alert);
+}
+
+.coords-result.is-soft {
+  color: var(--dim);
+}
+
+.coords-ok {
+  color: var(--aurora);
+  font-variant-numeric: tabular-nums;
+}
+
+.coords-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--haze);
+  font-size: 13px;
+}
+
+.name-step {
+  margin-top: 16px;
+}
+
+.name-step[hidden] {
+  display: none;
+}
+
+.name-step label {
+  margin: 0 0 6px;
+  color: var(--frost);
+  font-size: 15px;
+}
+
+.cancel {
+  color: var(--haze);
+  font-size: 15px;
+}
+
+.add-place .hint {
+  margin-top: 12px;
+}
+
+.places-status {
+  display: block;
+  margin: 14px 0 0;
+}
+
+.places-status:empty {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .place-badge {
+    display: none;
+  }
 }

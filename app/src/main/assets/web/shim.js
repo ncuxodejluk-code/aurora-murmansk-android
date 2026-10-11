@@ -99,7 +99,7 @@
     },
   };
 
-  var HOSTS = /^https:\/\/(services\.swpc\.noaa\.gov|ccmc\.gsfc\.nasa\.gov|api\.open-meteo\.com)\//;
+  var HOSTS = /^https:\/\/(services\.swpc\.noaa\.gov|ccmc\.gsfc\.nasa\.gov|api\.open-meteo\.com|api\.met\.no)\//;
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
     var url = typeof input === 'string' ? input : input && input.url;

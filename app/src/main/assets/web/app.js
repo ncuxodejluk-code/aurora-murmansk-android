@@ -3,7 +3,8 @@ import { HOUR, arrivalSpan } from './lib/model.js';
 import { GROUPS } from './lib/sources.js';
 import { withDefaults, saveSettings } from './lib/settings.js';
 import { isMuted, muteOptions, untilFor } from './lib/mute.js';
-import { refresh, settingsKey } from './refresh.js';
+import { refresh, recompute, settingsKey } from './refresh.js';
+import { renderPlaceSelect, bindPlaceSelect, refitPlaceSelect } from './lib/place-select.js';
 
 const B = window.AuroraBridge;
 
@@ -50,13 +51,26 @@ async function init() {
   $('settings').addEventListener('click', () => (location.href = 'settings.html'));
   $('refresh').addEventListener('click', () => requestRefresh('manual'));
   $('mute-select').addEventListener('change', onMuteChange);
+  bindPlaceSelect($('place'), {
+    getSettings: () => withDefaults(current.settings),
+    openManager: () => (location.href = 'settings.html#places'),
+  });
 
   Object.assign(current, await chrome.storage.local.get(['state', 'sources', 'busy', 'settings']));
+  // Отметка «обновляю» от прошлого экрана, который закрыли посреди загрузки, — уже неправда.
+  // Настоящей может быть только отметка фоновой проверки.
+  if (current.busy && current.busy.reason !== 'alarm') {
+    current.busy = null;
+    await chrome.storage.local.set({ busy: null });
+  }
   render();
+  document.fonts?.ready.then(() => refitPlaceSelect($('place'), withDefaults(current.settings)));
   autoRefresh();
 
   // Приложение вернулось на экран: перерисовать время и подтянуть свежие данные.
-  window.__auroraResume = () => {
+  window.__auroraResume = async () => {
+    // Экран мог вернуться из кэша браузера после настроек — перечитать сохранённое.
+    Object.assign(current, await chrome.storage.local.get(['state', 'sources', 'busy', 'settings']));
     render();
     autoRefresh();
   };
@@ -74,30 +88,48 @@ async function init() {
       }
     }
     if (dirty) render();
+    if (changes.settings) onSettingsChanged(changes.settings.oldValue, changes.settings.newValue);
   });
   setInterval(renderTop, 30000);
 }
 
 const isBusy = () => manualBusy || (current.busy && Date.now() - current.busy.since < 120000);
 
+// Место выбрали в шапке: сразу пересчитать по загруженным данным, потом догрузить облачность для него.
+async function onSettingsChanged(oldRaw, newRaw) {
+  const o = withDefaults(oldRaw);
+  const n = withDefaults(newRaw);
+  if (settingsKey(o) !== settingsKey(n)) {
+    await recompute();
+    requestRefresh('open', { again: true });
+  } else if (o.location.name !== n.location.name) {
+    recompute();
+  }
+}
+
 async function autoRefresh() {
   const settings = withDefaults(current.settings);
   const st = current.state;
   if (!st) return requestRefresh('manual');
-  if (st.settingsKey !== settingsKey(settings)) return requestRefresh('settings');
+  // Место или настройки поменяли на странице настроек.
+  if (st.settingsKey !== settingsKey(settings)) {
+    await recompute();
+    return requestRefresh('open', { again: true });
+  }
+  if (st.location?.name !== settings.location.name) await recompute();
   const { extracts } = await chrome.storage.local.get('extracts');
   const liveAge = Date.now() - (extracts?.wind?.at || 0);
   const age = Date.now() - st.computedAt;
   if (liveAge > 10 * 60000 || age > (settings.intervalMin + 5) * 60000) requestRefresh('open');
 }
 
-async function requestRefresh(reason) {
-  if (isBusy()) return;
+async function requestRefresh(reason, { again = false } = {}) {
+  if (isBusy() && !again) return;
   manualBusy = true;
   manualError = null;
   renderTop();
   try {
-    await refresh(reason);
+    await refresh(reason, { again });
   } catch (e) {
     manualError = e?.message || String(e);
   } finally {
@@ -161,7 +193,7 @@ async function onMuteChange(e) {
 function renderTop() {
   renderMute();
   const st = current.state;
-  $('place').textContent = st?.location?.name || withDefaults(current.settings).location.name;
+  renderPlaceSelect($('place'), withDefaults(current.settings));
   const btn = $('refresh');
   const busy = isBusy();
   btn.setAttribute('aria-busy', busy ? 'true' : 'false');

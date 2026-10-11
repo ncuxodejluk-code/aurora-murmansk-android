@@ -1,6 +1,11 @@
+import { DEFAULT_PLACE, normalizePlaces } from './places.js';
+
 export const DEFAULTS = {
   intervalMin: 15,
-  location: { name: 'Мурманск', lat: 68.9585, lon: 33.0827 },
+  // Выбранное место. Хранится для расчёта, а сам список — в places.
+  location: { name: DEFAULT_PLACE.name, lat: DEFAULT_PLACE.lat, lon: DEFAULT_PLACE.lon },
+  places: [{ ...DEFAULT_PLACE }],
+  placeId: DEFAULT_PLACE.id,
   flareMinClass: 'M1',
   useClouds: true,
   notifyFlares: true,
@@ -14,7 +19,11 @@ export const INTERVALS = [10, 15, 30, 60, 180];
 
 export function withDefaults(saved) {
   const s = { ...DEFAULTS, ...(saved || {}) };
-  s.location = { ...DEFAULTS.location, ...(saved?.location || {}) };
+  const { places, placeId } = normalizePlaces(saved);
+  s.places = places;
+  s.placeId = placeId;
+  const p = places.find((x) => x.id === placeId);
+  s.location = { name: p.name, lat: p.lat, lon: p.lon };
   if (!INTERVALS.includes(Number(s.intervalMin))) s.intervalMin = DEFAULTS.intervalMin;
   if (s.notifyPausedUntil !== 'forever' && typeof s.notifyPausedUntil !== 'number') s.notifyPausedUntil = null;
   return s;
@@ -25,9 +34,10 @@ export async function loadSettings() {
   return withDefaults(settings);
 }
 
+/** Сохраняет изменения. Место выбирается через placeId и places, settings.location пересчитывается само. */
 export async function saveSettings(patch) {
   const current = await loadSettings();
-  const next = withDefaults({ ...current, ...patch, location: { ...current.location, ...(patch.location || {}) } });
+  const next = withDefaults({ ...current, ...patch });
   await chrome.storage.local.set({ settings: next });
   return next;
 }

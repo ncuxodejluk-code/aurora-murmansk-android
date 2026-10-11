@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Сияние над Мурманском",
+  "short_name": "Сияние",
+  "version": "1.2.0",
+  "description": "Следит за вспышками на Солнце и выбросами к Земле и показывает, когда в Мурманске ждать северное сияние.",
+  "minimum_chrome_version": "102",
+  "permissions": ["alarms", "storage", "notifications"],
+  "host_permissions": [
+    "https://services.swpc.noaa.gov/*",
+    "https://ccmc.gsfc.nasa.gov/*",
+    "https://api.open-meteo.com/*",
+    "https://api.met.no/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Сияние над Мурманском",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -21,24 +21,48 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Ключ подписи хранится в репозитории зашифрованным, пароль — в секрете репозитория.
+      # Один и тот же ключ нужен, чтобы новые версии ставились поверх старых.
+      - name: Ключ подписи
+        env:
+          AURORA_SIGNING_PASSWORD: ${{ secrets.AURORA_SIGNING_PASSWORD }}
+        run: |
+          if [ -z "$AURORA_SIGNING_PASSWORD" ]; then
+            echo "::error title=Нет пароля ключа подписи::Добавьте секрет AURORA_SIGNING_PASSWORD: Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
+            -in app/signing/release.p12.enc -out "$RUNNER_TEMP/release.p12" \
+            -pass env:AURORA_SIGNING_PASSWORD
+          echo "AURORA_KEYSTORE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+
       - name: Сборка
+        env:
+          AURORA_SIGNING_PASSWORD: ${{ secrets.AURORA_SIGNING_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleRelease
 
-      - name: Готовый файл
-        run: cp app/build/outputs/apk/release/*.apk aurora-murmansk.apk
+      - name: Готовые файлы
+        run: |
+          cp app/build/outputs/apk/release/*.apk aurora-murmansk.apk
+          mkdir -p dist
+          cp -r extension dist/aurora-murmansk
+          (cd dist && zip -qr ../aurora-murmansk-extension.zip aurora-murmansk)
+          rm -f "$RUNNER_TEMP/release.p12"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: aurora-murmansk-apk
-          path: aurora-murmansk.apk
+          name: aurora-murmansk
+          path: |
+            aurora-murmansk.apk
+            aurora-murmansk-extension.zip
 
       - name: Публикация в Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" aurora-murmansk.apk \
+          gh release create "build-${{ github.run_number }}" aurora-murmansk.apk aurora-murmansk-extension.zip \
             --title "Сборка ${{ github.run_number }}" \
-            --notes "Скачайте aurora-murmansk.apk на телефон и откройте его, чтобы установить или обновить приложение." \
+            --notes "Android: скачайте aurora-murmansk.apk на телефон и откройте его, чтобы установить или обновить приложение. Браузер: aurora-murmansk-extension.zip — расширение для Яндекс Браузера и Chrome, как установить — в README." \
             --latest
